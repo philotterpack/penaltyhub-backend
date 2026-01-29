@@ -1,17 +1,15 @@
-
 from datetime import datetime
 from typing import Optional
 from config import db
-from models import UserProfile, UpdateUserProfileRequest, UserStats
+from models import UpdateUserRequest, UserStats  # <-- Import corretti
 
-def get_user_profile(uid: str) -> Optional[UserProfile]:
+def get_user_profile(uid: str) -> Optional[dict]:  # <-- Restituisce dict
     doc = db.collection("users").document(uid).get()
     if not doc.exists:
         return None
-    data = doc.to_dict()
-    return UserProfile(**data)
+    return doc.to_dict()
 
-def update_user_profile(uid: str, payload: UpdateUserProfileRequest) -> Optional[UserProfile]:
+def update_user_profile(uid: str, payload: UpdateUserRequest) -> Optional[dict]:
     doc_ref = db.collection("users").document(uid)
     doc = doc_ref.get()
     if not doc.exists:
@@ -19,7 +17,7 @@ def update_user_profile(uid: str, payload: UpdateUserProfileRequest) -> Optional
     updates = {k: v for k, v in payload.dict().items() if v is not None}
     if not updates:
         return get_user_profile(uid)
-    updates["updated_at"] = datetime.utcnow()
+    updates["updated_at"] = datetime.utcnow().isoformat()
     doc_ref.update(updates)
     return get_user_profile(uid)
 

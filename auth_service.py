@@ -6,14 +6,12 @@ from google.cloud.firestore_v1 import Client as FirestoreClient
 from config import db, firebase_auth
 from models import (
     RegisterWithEmailRequest,
-    RegisterWithNicknameRequest,
     LoginWithEmailRequest,
     LoginWithNicknameRequest,
-    UserResponse,  # <--- CAMBIATO DA AuthResponse
+    UserResponse,  # <-- Cambiato da AuthResponse
 )
 
 def _generate_tag() -> str:
-    # Genera un tag numerico tipo "1234"
     return f"{random.randint(0, 9999):04d}"
 
 def _nickname_tag_exists(
@@ -38,7 +36,6 @@ def _generate_unique_tag_for_nickname(
     raise RuntimeError("Impossibile generare un tag univoco per il nickname")
 
 def register_with_email(data: RegisterWithEmailRequest) -> UserResponse:
-    # 1. crea utente in Firebase Auth
     user_record = firebase_auth.create_user(
         email=data.email,
         password=data.password,
@@ -46,10 +43,8 @@ def register_with_email(data: RegisterWithEmailRequest) -> UserResponse:
     )
     uid = user_record.uid
 
-    # 2. gestisci tag
     tag = data.tag or _generate_unique_tag_for_nickname(db, data.nickname)
 
-    # 3. salva profilo in Firestore
     now = datetime.utcnow()
     user_doc = {
         "uid": uid,
@@ -59,12 +54,11 @@ def register_with_email(data: RegisterWithEmailRequest) -> UserResponse:
         "avatar_url": None,
         "favorite_team": None,
         "status": "active",
-        "created_at": now,
-        "updated_at": now,
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
     }
     db.collection("users").document(uid).set(user_doc)
 
-    # 4. crea stats iniziali
     stats_doc = {
         "uid": uid,
         "total_matches": 0,
@@ -73,7 +67,6 @@ def register_with_email(data: RegisterWithEmailRequest) -> UserResponse:
         "draws": 0,
         "goals_scored": 0,
         "goals_conceded": 0,
-        "clean_sheets": 0,
         "last_match_at": None,
     }
     db.collection("user_stats").document(uid).set(stats_doc)
@@ -83,57 +76,6 @@ def register_with_email(data: RegisterWithEmailRequest) -> UserResponse:
         email=data.email,
         nickname=data.nickname,
         tag=tag,
-        status="active",
-        created_at=now.isoformat(),
-    )
-
-def register_with_nickname(data: RegisterWithNicknameRequest) -> UserResponse:
-    # Verifica se nickname+tag già esistono
-    if _nickname_tag_exists(db, data.nickname, data.tag):
-        raise ValueError("Nickname e tag già in uso")
-
-    # 1. crea utente in Firebase Auth (senza email)
-    user_record = firebase_auth.create_user(
-        password=data.password,
-        display_name=f"{data.nickname}#{data.tag}",
-    )
-    uid = user_record.uid
-
-    # 2. salva profilo in Firestore
-    now = datetime.utcnow()
-    user_doc = {
-        "uid": uid,
-        "nickname": data.nickname,
-        "tag": data.tag,
-        "email": None,
-        "avatar_url": None,
-        "favorite_team": None,
-        "status": "active",
-        "created_at": now,
-        "updated_at": now,
-    }
-    db.collection("users").document(uid).set(user_doc)
-
-    # 3. crea stats iniziali
-    stats_doc = {
-        "uid": uid,
-        "total_matches": 0,
-        "wins": 0,
-        "losses": 0,
-        "draws": 0,
-        "goals_scored": 0,
-        "goals_conceded": 0,
-        "clean_sheets": 0,
-        "last_match_at": None,
-    }
-    db.collection("user_stats").document(uid).set(stats_doc)
-
-    return UserResponse(
-        uid=uid,
-        email=None,
-        nickname=data.nickname,
-        tag=data.tag,
-        status="active",
         created_at=now.isoformat(),
     )
 
@@ -154,8 +96,8 @@ def login_with_email(data: LoginWithEmailRequest) -> UserResponse:
             "avatar_url": None,
             "favorite_team": None,
             "status": "active",
-            "created_at": now,
-            "updated_at": now,
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat(),
         }
         db.collection("users").document(uid).set(profile)
     else:
@@ -166,8 +108,7 @@ def login_with_email(data: LoginWithEmailRequest) -> UserResponse:
         email=profile.get("email"),
         nickname=profile.get("nickname"),
         tag=profile.get("tag"),
-        status=profile.get("status", "active"),
-        created_at=profile.get("created_at").isoformat() if profile.get("created_at") else datetime.utcnow().isoformat(),
+        created_at=profile.get("created_at"),
     )
 
 def login_with_nickname(data: LoginWithNicknameRequest) -> Optional[UserResponse]:
@@ -186,6 +127,5 @@ def login_with_nickname(data: LoginWithNicknameRequest) -> Optional[UserResponse
         email=profile.get("email"),
         nickname=profile["nickname"],
         tag=profile["tag"],
-        status=profile.get("status", "active"),
-        created_at=profile.get("created_at").isoformat() if profile.get("created_at") else datetime.utcnow().isoformat(),
+        created_at=profile.get("created_at"),
     )
