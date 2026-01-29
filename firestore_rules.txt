@@ -1,0 +1,145 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ========= REGOLA GENERALE =========
+    // Default: nessun accesso a nulla se non specificato
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ========= UTENTI =========
+    // Collezione: users (profilo base)
+    match /users/{userId} {
+      // Chiunque sia autenticato può leggere i profili utenti
+      // (se vuoi più privacy, puoi restringere)
+      allow read: if request.auth != null;
+
+      // Un utente può creare/modificare SOLO il proprio documento
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId
+                            && isValidUserWrite();
+
+      // Nessuno può cancellare utenti direttamente dal client
+      allow delete: if false;
+    }
+
+    // ========= STATISTICHE UTENTE =========
+    // Collezione: user_stats
+    match /user_stats/{userId} {
+      // Chiunque autenticato può leggere le stats degli altri
+      // (utile per classifiche, confronti, ecc.)
+      allow read: if request.auth != null;
+
+      // Update stats SOLO da backend -> usa custom claims o check extra
+      // Per semplicità: blocchiamo tutte le scritture dal client.
+      allow create, update, delete: if false;
+    }
+
+    // ========= PARTITE =========
+    // Collezione: matches
+    match /matches/{matchId} {
+      // Permetti lettura delle partite a tutti gli utenti autenticati
+      allow read: if request.auth != null;
+
+      // Creazione e modifiche: idealmente SOLO backend
+      allow create, update, delete: if false;
+    }
+
+    // ========= STATISTICHE PARTITE =========
+    // Collezione: match_stats
+    match /match_stats/{matchId} {
+      // Lettura per utenti autenticati
+      allow read: if request.auth != null;
+
+      // Scritture SOLO backend
+      allow create, update, delete: if false;
+    }
+
+    // ========= SCOMMESSE (OPZIONALE) =========
+    // Collezione: bets
+    match /bets/{betId} {
+      // Leggere solo la propria scommessa
+      allow read: if request.auth != null
+                  && resource.data.uid == request.auth.uid;
+
+      // Creare solo per se stessi
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && isValidBetCreate();
+
+      // Aggiornamenti (es. annullare) solo se la bet è ancora 'open'
+      // e appartiene all'utente
+      allow update: if request.auth != null
+                    && resource.data.uid == request.auth.uid
+                    && resource.data.status == 'open'
+                    && isValidBetUpdate();
+
+      // Cancellazione solo backend
+      allow delete: if false;
+    }
+
+
+    // ========= FUNZIONI DI VALIDAZIONE =========
+
+    function isValidUserWrite() {
+      // Controlli di base sui campi utente
+      let data = request.resource.data;
+
+      // Nickname obbligatorio, stringa non vuota
+      let validNickname = data.nickname is string
+                          && data.nickname.size() > 0
+                          && data.nickname.size() <= 30;
+
+      // Tag: 4 caratteri numerici (es. "1234")
+      let validTag = data.tag is string
+                     && data.tag.size() == 4
+                     && data.tag.matches('^[0-9]{4}$');
+
+      // email opzionale ma, se presente, deve avere il campo formato stringa
+      let validEmail = !('email' in data)
+                       || (data.email is string && data.email.size() <= 100);
+
+      // status deve essere uno tra i consentiti
+      let validStatus = !('status' in data)
+                        || (data.status in ['active', 'banned', 'inactive']);
+
+      return validNickname && validTag && validEmail && validStatus;
+    }
+
+    function isValidBetCreate() {
+      let d = request.resource.data;
+
+      // Campi minimi richiesti
+      return d.uid is string
+             && d.match_id is string
+             && d.bet_type is string
+             && d.amount is number
+             && d.amount > 0
+             && d.odds is number
+             && d.odds > 1.0
+             && d.status == 'open';
+    }
+
+    function isValidBetUpdate() {
+      let newData = request.resource.data;
+      let oldData = resource.data;
+
+      // Non permettere cambiare uid, match_id
+      let sameUser = newData.uid == oldData.uid;
+      let sameMatch = newData.match_id == oldData.match_id;
+
+      // amount non può aumentare dopo la creazione (solo diminuire o uguale)
+      let validAmount = newData.amount is number
+                        && newData.amount <= oldData.amount
+                        && newData.amount > 0;
+
+      // status può cambiare da 'open' -> 'cancelled' (es. annullata dall'utente)
+      let validStatus = (newData.status in ['open', 'cancelled'])
+                        && oldData.status == 'open';
+
+      return sameUser && sameMatch && validAmount && validStatus;
+    }
+  }
+}

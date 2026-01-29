@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PenaltyHub - Locker Room Elite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;900&display=swap');
+        
+        :root {
+            --emerald: #10b981;
+            --slate-bg: #070b14;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--slate-bg);
+            color: #f1f5f9;
+            overflow-x: hidden;
+            letter-spacing: -0.01em;
+        }
+
+        h1, h2, h3, h4, h5, h6, .font-black {
+            font-family: 'Inter', sans-serif;
+            font-weight: 900;
+        }
+
+        .glass {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0c1220;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+
+        /* Custom focus rings */
+        input:focus, select:focus, textarea:focus {
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+        }
+
+        /* Smooth page transitions */
+        .animate-in {
+            animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .float {
+            animation: float 6s ease-in-out infinite;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
