@@ -1,128 +1,236 @@
-
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
+
 from models import (
     RegisterWithEmailRequest,
+    RegisterWithNicknameRequest,
     LoginWithEmailRequest,
     LoginWithNicknameRequest,
-    AuthResponse,
-    UserProfile,
-    UpdateUserProfileRequest,
-    UserStats,
+    UserResponse,
+    UpdateUserRequest,
     MatchCreateRequest,
-    Match,
-    MatchStats,
+    MatchResponse,
 )
+
 from auth_service import (
-    register_with_email,
+    register_user_with_email,
+    register_user_with_nickname,
     login_with_email,
     login_with_nickname,
 )
+
 from user_service import (
-    get_user_profile,
+    get_user_by_uid,
     update_user_profile,
     get_user_stats,
 )
+
 from match_service import (
     create_match,
-    get_match,
-    get_match_stats,
-    update_match_score_and_status,
+    get_match_by_id,
+    get_matches_by_status,
 )
 
-app = FastAPI(title="PenaltyHub Backend")
+# ============================================================
+# Inizializzazione FastAPI
+# ============================================================
 
-# Configura CORS
-origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-]
+app = FastAPI(
+    title="PenaltyHub API",
+    description="Backend per l'app di scommesse e calcio",
+    version="1.0.0"
+)
+
+# ============================================================
+# CORS Middleware - Permette al frontend di chiamare il backend
+# ============================================================
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # Permette tutte le origini (per sviluppo/test)
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Permette tutti i metodi HTTP (GET, POST, PUT, DELETE, ecc.)
+    allow_headers=["*"],  # Permette tutti gli header
 )
 
-# --------- AUTH ROUTES ---------
-@app.post("/auth/register", response_model=AuthResponse)
-def register_user(data: RegisterWithEmailRequest):
+# ============================================================
+# Root endpoint (per test)
+# ============================================================
+
+@app.get("/")
+def read_root():
+    return {
+        "message": "PenaltyHub API is running!",
+        "docs": "/docs",
+        "version": "1.0.0"
+    }
+
+# ============================================================
+# AUTH ENDPOINTS
+# ============================================================
+
+@app.post("/auth/register/email", response_model=UserResponse)
+async def register_email(req: RegisterWithEmailRequest):
+    """
+    Registrazione con email + password.
+    Genera automaticamente nickname#tag se non forniti.
+    """
     try:
-        return register_with_email(data)
+        user_data = register_user_with_email(
+            email=req.email,
+            password=req.password,
+            nickname=req.nickname,
+            tag=req.tag
+        )
+        return user_data
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/auth/login/email", response_model=AuthResponse)
-def login_user_email(data: LoginWithEmailRequest):
+
+@app.post("/auth/register/nickname", response_model=UserResponse)
+async def register_nickname(req: RegisterWithNicknameRequest):
+    """
+    Registrazione con nickname#tag + password (senza email).
+    """
     try:
-        return login_with_email(data)
+        user_data = register_user_with_nickname(
+            nickname=req.nickname,
+            tag=req.tag,
+            password=req.password
+        )
+        return user_data
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/auth/login/nickname", response_model=AuthResponse)
-def login_user_nickname(data: LoginWithNicknameRequest):
-    res = login_with_nickname(data)
-    if not res:
-        raise HTTPException(status_code=404, detail="Nickname+tag non trovati")
-    return res
 
-# --------- USER ROUTES ---------
-@app.get("/users/{uid}", response_model=UserProfile)
-def api_get_user_profile(uid: str):
-    profile = get_user_profile(uid)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Utente non trovato")
-    return profile
+@app.post("/auth/login/email", response_model=UserResponse)
+async def login_email(req: LoginWithEmailRequest):
+    """
+    Login con email + password.
+    """
+    try:
+        user_data = login_with_email(
+            email=req.email,
+            password=req.password
+        )
+        return user_data
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
 
-@app.patch("/users/{uid}", response_model=UserProfile)
-def api_update_user_profile(uid: str, payload: UpdateUserProfileRequest):
-    profile = update_user_profile(uid, payload)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Utente non trovato")
-    return profile
 
-@app.get("/users/{uid}/stats", response_model=UserStats)
-def api_get_user_stats(uid: str):
-    stats = get_user_stats(uid)
-    if not stats:
-        raise HTTPException(status_code=404, detail="Statistiche non trovate")
-    return stats
+@app.post("/auth/login/nickname", response_model=UserResponse)
+async def login_nickname(req: LoginWithNicknameRequest):
+    """
+    Login con nickname#tag + password.
+    """
+    try:
+        user_data = login_with_nickname(
+            nickname=req.nickname,
+            tag=req.tag,
+            password=req.password
+        )
+        return user_data
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
 
-# --------- MATCH ROUTES ---------
-@app.post("/matches", response_model=Match)
-def api_create_match(payload: MatchCreateRequest):
-    return create_match(payload)
 
-@app.get("/matches/{match_id}", response_model=Match)
-def api_get_match(match_id: str):
-    match = get_match(match_id)
-    if not match:
-        raise HTTPException(status_code=404, detail="Partita non trovata")
-    return match
+# ============================================================
+# USER ENDPOINTS
+# ============================================================
 
-@app.get("/matches/{match_id}/stats", response_model=MatchStats)
-def api_get_match_stats(match_id: str):
-    stats = get_match_stats(match_id)
-    if not stats:
-        raise HTTPException(status_code=404, detail="Statistiche partita non trovate")
-    return stats
+@app.get("/users/{uid}", response_model=UserResponse)
+async def get_user(uid: str):
+    """
+    Ottieni i dati di un utente tramite UID.
+    """
+    try:
+        user_data = get_user_by_uid(uid)
+        if not user_data:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user_data
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-@app.put("/matches/{match_id}/score", response_model=Match)
-def api_update_match_score(
-    match_id: str,
-    home_score: int,
-    away_score: int,
-    status: Optional[str] = None,
-):
-    match = update_match_score_and_status(
-        match_id=match_id,
-        home_score=home_score,
-        away_score=away_score,
-        status=status,
-    )
-    if not match:
-        raise HTTPException(status_code=404, detail="Partita non trovata")
-    return match
+
+@app.put("/users/{uid}", response_model=UserResponse)
+async def update_user(uid: str, req: UpdateUserRequest):
+    """
+    Aggiorna il profilo di un utente.
+    """
+    try:
+        updated_user = update_user_profile(uid, req.dict(exclude_unset=True))
+        return updated_user
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/users/{uid}/stats")
+async def get_stats(uid: str):
+    """
+    Ottieni le statistiche di un utente.
+    """
+    try:
+        stats = get_user_stats(uid)
+        if not stats:
+            raise HTTPException(status_code=404, detail="Stats not found")
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================================
+# MATCH ENDPOINTS
+# ============================================================
+
+@app.post("/matches", response_model=MatchResponse)
+async def create_new_match(req: MatchCreateRequest):
+    """
+    Crea una nuova partita.
+    """
+    try:
+        match_data = create_match(
+            home_team=req.home_team,
+            away_team=req.away_team,
+            start_time=req.start_time,
+            league=req.league
+        )
+        return match_data
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/matches/{match_id}", response_model=MatchResponse)
+async def get_match(match_id: str):
+    """
+    Ottieni i dettagli di una partita tramite ID.
+    """
+    try:
+        match_data = get_match_by_id(match_id)
+        if not match_data:
+            raise HTTPException(status_code=404, detail="Match not found")
+        return match_data
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/matches")
+async def list_matches(status: Optional[str] = None):
+    """
+    Lista tutte le partite, opzionalmente filtrate per status.
+    Status possibili: scheduled, live, finished
+    """
+    try:
+        matches = get_matches_by_status(status)
+        return {"matches": matches}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================================
+# Health Check
+# ============================================================
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "message": "Backend is healthy"}
