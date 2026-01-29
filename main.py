@@ -14,8 +14,8 @@ from models import (
 )
 
 from auth_service import (
-    register_user_with_email,
-    register_user_with_nickname,
+    register_with_email,  # <--- CAMBIATO
+    register_with_nickname,  # <--- CAMBIATO
     login_with_email,
     login_with_nickname,
 )
@@ -32,9 +32,9 @@ from match_service import (
     get_matches_by_status,
 )
 
-# ============================================================
+# ====
 # Inizializzazione FastAPI
-# ============================================================
+# ====
 
 app = FastAPI(
     title="PenaltyHub API",
@@ -42,21 +42,21 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# ============================================================
+# ====
 # CORS Middleware - Permette al frontend di chiamare il backend
-# ============================================================
+# ====
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Permette tutte le origini (per sviluppo/test)
     allow_credentials=True,
     allow_methods=["*"],  # Permette tutti i metodi HTTP (GET, POST, PUT, DELETE, ecc.)
-    allow_headers=["*"],  # Permette tutti gli header
+    allow_headers=[""],  # Permette tutti gli header
 )
 
-# ============================================================
+# ====
 # Root endpoint (per test)
-# ============================================================
+# ====
 
 @app.get("/")
 def read_root():
@@ -66,9 +66,9 @@ def read_root():
         "version": "1.0.0"
     }
 
-# ============================================================
+# ====
 # AUTH ENDPOINTS
-# ============================================================
+# ====
 
 @app.post("/auth/register/email", response_model=UserResponse)
 async def register_email(req: RegisterWithEmailRequest):
@@ -77,12 +77,7 @@ async def register_email(req: RegisterWithEmailRequest):
     Genera automaticamente nickname#tag se non forniti.
     """
     try:
-        user_data = register_user_with_email(
-            email=req.email,
-            password=req.password,
-            nickname=req.nickname,
-            tag=req.tag
-        )
+        user_data = register_with_email(req)  # <--- CAMBIATO
         return user_data
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -94,11 +89,7 @@ async def register_nickname(req: RegisterWithNicknameRequest):
     Registrazione con nickname#tag + password (senza email).
     """
     try:
-        user_data = register_user_with_nickname(
-            nickname=req.nickname,
-            tag=req.tag,
-            password=req.password
-        )
+        user_data = register_with_nickname(req)  # <--- CAMBIATO
         return user_data
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -110,10 +101,7 @@ async def login_email(req: LoginWithEmailRequest):
     Login con email + password.
     """
     try:
-        user_data = login_with_email(
-            email=req.email,
-            password=req.password
-        )
+        user_data = login_with_email(req)  # <--- CAMBIATO
         return user_data
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
@@ -125,19 +113,17 @@ async def login_nickname(req: LoginWithNicknameRequest):
     Login con nickname#tag + password.
     """
     try:
-        user_data = login_with_nickname(
-            nickname=req.nickname,
-            tag=req.tag,
-            password=req.password
-        )
+        user_data = login_with_nickname(req)  # <--- CAMBIATO
+        if not user_data:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
         return user_data
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
 
 
-# ============================================================
+# ====
 # USER ENDPOINTS
-# ============================================================
+# ====
 
 @app.get("/users/{uid}", response_model=UserResponse)
 async def get_user(uid: str):
@@ -179,9 +165,9 @@ async def get_stats(uid: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# ============================================================
+# ====
 # MATCH ENDPOINTS
-# ============================================================
+# ====
 
 @app.post("/matches", response_model=MatchResponse)
 async def create_new_match(req: MatchCreateRequest):
@@ -227,9 +213,9 @@ async def list_matches(status: Optional[str] = None):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# ============================================================
+# ====
 # Health Check
-# ============================================================
+# ====
 
 @app.get("/health")
 def health_check():
