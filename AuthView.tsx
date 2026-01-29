@@ -26,7 +26,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   const [regNickname, setRegNickname] = useState('');
   const [regTag, setRegTag] = useState('');
 
-  const API_BASE = 'http://127.0.0.1:8000';
+  const API_BASE = 'https://penaltyhub.onrender.com';
 
   // ========== UTILITY ==========
   const generateRandomTag = (): string => {
