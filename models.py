@@ -1,49 +1,56 @@
-
-from typing import Optional, List, Dict, Any
-from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
+from datetime import datetime
 
-# --------- AUTH ---------
+
+# ============================================================
+# AUTH MODELS
+# ============================================================
+
 class RegisterWithEmailRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=6)
-    nickname: str
-    tag: Optional[str] = None  # se non lo passi, lo generiamo noi
+    password: str = Field(..., min_length=6)
+    nickname: Optional[str] = None
+    tag: Optional[str] = None
+
+
+class RegisterWithNicknameRequest(BaseModel):
+    nickname: str = Field(..., min_length=3, max_length=20)
+    tag: str = Field(..., min_length=4, max_length=4)
+    password: str = Field(..., min_length=6)
+
 
 class LoginWithEmailRequest(BaseModel):
     email: EmailStr
     password: str
 
+
 class LoginWithNicknameRequest(BaseModel):
     nickname: str
     tag: str
+    password: str
 
-class AuthResponse(BaseModel):
+
+class UserResponse(BaseModel):
     uid: str
-    email: Optional[EmailStr]
+    email: Optional[str] = None
     nickname: str
     tag: str
-    id_token: Optional[str] = None
-
-# --------- USER ---------
-class UserProfile(BaseModel):
-    uid: str
-    nickname: str
-    tag: str
-    email: Optional[EmailStr]
-    avatar_url: Optional[str] = None
-    favorite_team: Optional[str] = None
     status: str = "active"
-    created_at: datetime
-    updated_at: datetime
+    created_at: str
 
-class UpdateUserProfileRequest(BaseModel):
-    avatar_url: Optional[str] = None
-    favorite_team: Optional[str] = None
+
+# ============================================================
+# USER MODELS
+# ============================================================
+
+class UpdateUserRequest(BaseModel):
+    nickname: Optional[str] = None
+    tag: Optional[str] = None
     status: Optional[str] = None
 
-# --------- USER STATS ---------
-class UserStats(BaseModel):
+
+class UserStatsResponse(BaseModel):
     uid: str
     total_matches: int = 0
     wins: int = 0
@@ -51,34 +58,50 @@ class UserStats(BaseModel):
     draws: int = 0
     goals_scored: int = 0
     goals_conceded: int = 0
-    last_match_at: Optional[datetime] = None
+    clean_sheets: int = 0
 
-# --------- MATCH & STATS ---------
+
+# ============================================================
+# MATCH MODELS
+# ============================================================
+
 class MatchCreateRequest(BaseModel):
     home_team: str
     away_team: str
-    start_time: Optional[datetime] = None
-    players: List[str] = []  # lista di uid
+    start_time: str  # ISO 8601 format
+    league: Optional[str] = None
 
-class Match(BaseModel):
+
+class MatchResponse(BaseModel):
     match_id: str
     home_team: str
     away_team: str
-    start_time: Optional[datetime]
-    end_time: Optional[datetime]
-    status: str
-    home_score: int
-    away_score: int
-    players: List[str]
-    created_at: datetime
-    updated_at: datetime
+    start_time: str
+    status: str  # scheduled, live, finished
+    home_score: int = 0
+    away_score: int = 0
+    league: Optional[str] = None
+    created_at: str
 
-class MatchStats(BaseModel):
+
+# ============================================================
+# BET MODELS (opzionale, per future implementazioni)
+# ============================================================
+
+class BetCreateRequest(BaseModel):
     match_id: str
-    events: List[Dict[str, Any]] = []
-    possession_home: Optional[float] = None
-    possession_away: Optional[float] = None
-    shots_home: Optional[int] = None
-    shots_away: Optional[int] = None
-    corners_home: Optional[int] = None
-    corners_away: Optional[int] = None
+    uid: str
+    bet_type: str  # es. "1X2", "over_under", "both_teams_score"
+    prediction: str
+    stake: float
+
+
+class BetResponse(BaseModel):
+    bet_id: str
+    match_id: str
+    uid: str
+    bet_type: str
+    prediction: str
+    stake: float
+    status: str  # pending, won, lost
+    created_at: str
