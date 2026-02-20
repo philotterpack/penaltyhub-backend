@@ -58,11 +58,11 @@ app.add_middleware(
 )
 
 # ====
-# Root endpoint (per test)
+# API Status endpoint (spostato da "/" a "/api")
 # ====
 
-@app.get("/")
-def read_root():
+@app.get("/api")
+def api_status():
     return {
         "message": "PenaltyHub API is running!",
         "docs": "/docs",
