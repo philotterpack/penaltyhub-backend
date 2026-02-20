@@ -175,7 +175,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
+      const res = await fetch(`${API_BASE}/auth/register/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
