@@ -4,11 +4,17 @@ services:
     env: python
     runtime: python-3.11.9
     buildCommand: |
-      # Install Python dependencies
+      echo "=== Installing Python dependencies ==="
       pip install -r requirements.txt
-      # Install Node.js dependencies and build frontend
-      npm install
+      echo "=== Installing Node.js and building frontend ==="
+      curl -fsSL https://deb.nodesource.com/setup_20.x | bash - || true
+      apt-get install -y nodejs || yum install -y nodejs || true
+      node --version || echo "Node.js not found, trying alternative..."
+      npm --version || echo "npm not found, trying alternative..."
+      npm install --legacy-peer-deps
       npm run build
+      echo "=== Build completed ==="
+      ls -la dist/ || echo "dist folder not found!"
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: FIREBASE_CREDENTIALS_JSON

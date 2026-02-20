@@ -231,20 +231,31 @@ def health_check():
 
 dist_path = Path(__file__).parent / "dist"
 
-if dist_path.exists():
-    app.mount("/assets", StaticFiles(directory=str(dist_path / "assets")), name="assets")
+if dist_path.exists() and (dist_path / "index.html").exists():
+
+    app.mount("/assets", StaticFiles(directory=str(dist_path / "assets"), html=True), name="assets")
 
     @app.get("/{full_path:path}")
-    async def serve_frontend(full_path: str):
-        if full_path.startswith("auth/") or full_path.startswith("users/") or full_path.startswith("matches/") or full_path.startswith("health") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
-            raise HTTPException(status_code=404, detail="API endpoint not found")
+    async def serve_spa(full_path: str):
+
+        if full_path in ["health", "api", "docs", "openapi.json", "redoc"]:
+            raise HTTPException(status_code=404)
+
+        if full_path.startswith("auth") or full_path.startswith("users") or full_path.startswith("matches"):
+            raise HTTPException(status_code=404)
 
         file_path = dist_path / full_path
-        if file_path.exists() and file_path.is_file():
+        if file_path.is_file():
             return FileResponse(file_path)
 
-        index_path = dist_path / "index.html"
-        if index_path.exists():
-            return FileResponse(index_path)
+        return FileResponse(dist_path / "index.html")
+else:
 
-        raise HTTPException(status_code=404, detail="Not found")
+    @app.get("/")
+    def frontend_not_built():
+        return {
+            "error": "Frontend not built",
+            "message": "The dist folder does not exist. Run 'npm run build' to build the frontend.",
+            "dist_path": str(dist_path),
+            "exists": dist_path.exists()
+        }
