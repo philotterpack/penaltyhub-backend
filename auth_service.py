@@ -6,6 +6,7 @@ from google.cloud.firestore_v1 import Client as FirestoreClient
 from config import db, firebase_auth
 from models import (
     RegisterWithEmailRequest,
+    RegisterWithNicknameRequest,
     LoginWithEmailRequest,
     LoginWithNicknameRequest,
     UserResponse,  # <-- Cambiato da AuthResponse
@@ -79,11 +80,67 @@ def register_with_email(data: RegisterWithEmailRequest) -> UserResponse:
         created_at=now.isoformat(),
     )
 
-def login_with_email(data: LoginWithEmailRequest) -> UserResponse:
-    user_record = firebase_auth.get_user_by_email(data.email)
+def register_with_nickname(data: RegisterWithNicknameRequest) -> UserResponse:
+    if _nickname_tag_exists(db, data.nickname, data.tag):
+        raise ValueError(f"Il nickname '{data.nickname}#{data.tag}' è già in uso")
+
+    user_record = firebase_auth.create_user(
+        email=f"{data.nickname}_{data.tag}@penaltyhub.local",
+        password=data.password,
+        display_name=data.nickname,
+    )
     uid = user_record.uid
+
+    now = datetime.utcnow()
+    user_doc = {
+        "uid": uid,
+        "nickname": data.nickname,
+        "tag": data.tag,
+        "email": None,
+        "avatar_url": None,
+        "favorite_team": None,
+        "status": "active",
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    }
+    db.collection("users").document(uid).set(user_doc)
+
+    stats_doc = {
+        "uid": uid,
+        "total_matches": 0,
+        "wins": 0,
+        "losses": 0,
+        "draws": 0,
+        "goals_scored": 0,
+        "goals_conceded": 0,
+        "last_match_at": None,
+    }
+    db.collection("user_stats").document(uid).set(stats_doc)
+
+    return UserResponse(
+        uid=uid,
+        email=None,
+        nickname=data.nickname,
+        tag=data.tag,
+        created_at=now.isoformat(),
+    )
+
+def login_with_email(data: LoginWithEmailRequest) -> UserResponse:
+    try:
+        from firebase_admin import auth as firebase_auth_module
+        user_record = firebase_auth.get_user_by_email(data.email)
+        uid = user_record.uid
+
+        try:
+            custom_token = firebase_auth.create_custom_token(uid)
+        except Exception:
+            pass
+
+    except Exception as e:
+        raise ValueError(f"Email o password non validi: {str(e)}")
+
     doc = db.collection("users").document(uid).get()
-    
+
     if not doc.exists:
         nickname = user_record.display_name or "User"
         tag = _generate_unique_tag_for_nickname(db, nickname)
@@ -121,7 +178,22 @@ def login_with_nickname(data: LoginWithNicknameRequest) -> Optional[UserResponse
     docs = list(q.stream())
     if not docs:
         return None
+
     profile = docs[0].to_dict()
+    uid = profile["uid"]
+
+    try:
+        user_record = firebase_auth.get_user(uid)
+        email = user_record.email
+
+        if email:
+            try:
+                custom_token = firebase_auth.create_custom_token(uid)
+            except Exception:
+                pass
+    except Exception as e:
+        raise ValueError(f"Nickname/Tag o password non validi: {str(e)}")
+
     return UserResponse(
         uid=profile["uid"],
         email=profile.get("email"),

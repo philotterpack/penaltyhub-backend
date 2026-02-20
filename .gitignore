@@ -23,9 +23,26 @@ dist-ssr
 *.sln
 *.sw?
 
-
+# Firebase sensitive files
 serviceaccountkey.json
-*.json
+firebase-key.json
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist/
+build/
+*.env
 .env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db

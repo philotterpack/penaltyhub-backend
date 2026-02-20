@@ -51,7 +51,7 @@ app.add_middleware(
     allow_origins=["*"],  # Permette tutte le origini (per sviluppo/test)
     allow_credentials=True,
     allow_methods=["*"],  # Permette tutti i metodi HTTP (GET, POST, PUT, DELETE, ecc.)
-    allow_headers=[""],  # Permette tutti gli header
+    allow_headers=["*"],  # Permette tutti gli header
 )
 
 # ====

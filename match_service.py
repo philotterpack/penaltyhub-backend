@@ -42,6 +42,17 @@ def get_match(match_id: str) -> Optional[Match]:
     data = doc.to_dict()
     return Match(**data)
 
+get_match_by_id = get_match
+
+def get_matches_by_status(status: str) -> List[Match]:
+    query = db.collection("matches").where("status", "==", status)
+    docs = query.stream()
+    matches = []
+    for doc in docs:
+        data = doc.to_dict()
+        matches.append(Match(**data))
+    return matches
+
 def update_match_score_and_status(
     match_id: str,
     home_score: int,

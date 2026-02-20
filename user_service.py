@@ -9,6 +9,8 @@ def get_user_profile(uid: str) -> Optional[dict]:  # <-- Restituisce dict
         return None
     return doc.to_dict()
 
+get_user_by_uid = get_user_profile
+
 def update_user_profile(uid: str, payload: UpdateUserRequest) -> Optional[dict]:
     doc_ref = db.collection("users").document(uid)
     doc = doc_ref.get()
