@@ -3,11 +3,18 @@ services:
     name: penaltyhub-api
     env: python
     runtime: python-3.11.9
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      # Install Python dependencies
+      pip install -r requirements.txt
+      # Install Node.js dependencies and build frontend
+      npm install
+      npm run build
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: FIREBASE_CREDENTIALS_JSON
         sync: false
       - key: PYTHON_VERSION
         value: 3.11.9
-    healthCheckPath: /
+      - key: NODE_VERSION
+        value: 20
+    healthCheckPath: /health

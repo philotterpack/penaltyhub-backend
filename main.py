@@ -1,6 +1,9 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from typing import Optional
+from pathlib import Path
 
 from models import (
     RegisterWithEmailRequest,
@@ -220,3 +223,28 @@ async def list_matches(status: Optional[str] = None):
 @app.get("/health")
 def health_check():
     return {"status": "ok", "message": "Backend is healthy"}
+
+
+# ====
+# Serve Frontend Static Files
+# ====
+
+dist_path = Path(__file__).parent / "dist"
+
+if dist_path.exists():
+    app.mount("/assets", StaticFiles(directory=str(dist_path / "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        if full_path.startswith("auth/") or full_path.startswith("users/") or full_path.startswith("matches/") or full_path.startswith("health") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+
+        file_path = dist_path / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+
+        index_path = dist_path / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+
+        raise HTTPException(status_code=404, detail="Not found")
